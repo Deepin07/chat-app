@@ -1,5 +1,6 @@
 import User from "../models/user.model.js"
 import Message from "../models/message.model.js"
+import cloudinary from "../lib/cloudinary.js"
 
 export const getUserForSidebar = async (req, res) => {
     try {
@@ -16,14 +17,14 @@ export const getUserForSidebar = async (req, res) => {
 
 export const getMessages = async (req, res) => {
     try {
-        
+
         const { id: userToChatId } = req.params;
         const userId = req.user._id;
 
         const messages = await Message.find({
             $or: [
-                {senderId : userId, receiverId: userToChatId},
-                {senderId : userToChatId, receiverId: userId}
+                { senderId: userId, receiverId: userToChatId },
+                { senderId: userToChatId, receiverId: userId }
             ]
         })
 
@@ -35,15 +36,37 @@ export const getMessages = async (req, res) => {
     }
 }
 
-export const sendMessage = async(req, res ) => {
+export const sendMessage = async (req, res) => {
 
-    try{
+    try {
 
         const { text, image } = req.body;
         const { id: receiverId } = req.params;
+
+        let imageUrl;
+        if (image) {
+            const uploadResponse = await cloudinary.uploader.upload(image);
+            imageUrl = uploadResponse.secure_url;
+        }
+
+        const newMessage = new Message({
+            senderId,
+            receiverId,
+            text,
+            image: imageUrl
+        });
+
+        await newMessage.save();
+
+        //realtime functionality => socket.io
+
+        res.status(200).json(newMessage)
+
     }
-    catch (error) { 
-        
+    catch (error) {
+        console.log("Error in sendMessages Controller: ", error.message);
+        res.status(500).json({ error: "Internal server error" })
     }
+
 
 }
